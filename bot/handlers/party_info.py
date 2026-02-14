@@ -259,6 +259,28 @@ async def handle_time_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
+async def handle_time_page(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Navigate between time picker pages."""
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split(":")
+    party_id = int(parts[1])
+    page = int(parts[2])
+
+    picked_date = context.user_data.get("edit_info_date")
+    date_str = picked_date.strftime('%b %d, %Y') if picked_date else "?"
+
+    await query.edit_message_text(
+        f"🕐 <b>Date & time</b>\n\n"
+        f"Date: <b>{date_str}</b>\n\n"
+        "Now pick the time:",
+        parse_mode="HTML",
+        reply_markup=time_picker_keyboard(party_id, page=page),
+    )
+    return PICKING_TIME
+
+
 async def receive_time_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Accept a typed time like '18:30', '18.30', '1830' while in PICKING_TIME state."""
     party_id = context.user_data.get("edit_info_party_id")
@@ -516,6 +538,7 @@ def set_info_conversation() -> ConversationHandler:
             ],
             PICKING_TIME: [
                 CallbackQueryHandler(handle_time_callback, pattern=r"^pick_time:\d+:\d+:\d+$"),
+                CallbackQueryHandler(handle_time_page, pattern=r"^time_page:\d+:\d+$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_time_text),
             ],
         },

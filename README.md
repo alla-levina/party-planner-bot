@@ -6,9 +6,9 @@ A Telegram bot for organizing parties. Guests coordinate who brings what — so 
 
 - **Create parties** with unique invite links (duplicate name prevention per owner)
 - **Join parties** via shareable deep links
-- **View items** — see what everyone is bringing
-- **Add items** — claim an item with duplicate prevention
-- **Edit items** — rename or remove your own items
+- **View contributions** — see what everyone is bringing
+- **Add contributions** — claim what you're bringing with duplicate prevention
+- **Edit contributions** — rename or remove your own contributions
 - **Member list** — see who's in the party, search by name
 - **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
 - **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
@@ -57,7 +57,7 @@ python -m bot.main
 
 - `/start` — Main menu: create a party or view your parties
 - Share the invite link with friends so they can join your party
-- Use inline buttons to manage items, members, and party info
+- Use inline buttons to manage contributions, members, and party info
 
 ## Dependencies
 
@@ -79,7 +79,7 @@ maslenitsa-bot/
     handlers/
       start.py       — /start, main menu, deep-link join
       party.py       — Create party, party menu, invite link, leave/cancel
-      fillings.py    — View, add, edit, remove items
+      fillings.py    — View, add, edit, remove contributions
       members.py     — View, search, kick, promote/demote members
       party_info.py  — View/edit party info (date via calendar, address, map, notes, location pins)
   requirements.txt   — Python dependencies

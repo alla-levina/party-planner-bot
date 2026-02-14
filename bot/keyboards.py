@@ -19,9 +19,9 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = False) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton("ℹ️ Party info", callback_data=f"party_info:{party_id}")],
-        [InlineKeyboardButton("📜 View items", callback_data=f"view_fillings:{party_id}")],
-        [InlineKeyboardButton("➕ Add item", callback_data=f"add_filling:{party_id}")],
-        [InlineKeyboardButton("✏️ Edit my items", callback_data=f"edit_fillings:{party_id}")],
+        [InlineKeyboardButton("📜 What we're bringing", callback_data=f"view_fillings:{party_id}")],
+        [InlineKeyboardButton("➕ I'm bringing…", callback_data=f"add_filling:{party_id}")],
+        [InlineKeyboardButton("✏️ Edit my contributions", callback_data=f"edit_fillings:{party_id}")],
         [InlineKeyboardButton("👥 Members", callback_data=f"members:{party_id}")],
         [InlineKeyboardButton("🔗 Invite link", callback_data=f"invite_link:{party_id}")],
     ]
@@ -74,12 +74,21 @@ def edit_info_keyboard(party_id: int, info: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def time_picker_keyboard(party_id: int) -> InlineKeyboardMarkup:
-    """Grid of hour/half-hour buttons for time selection (10:00–22:30), 4 per row."""
-    slots = []
-    for h in range(10, 23):
-        slots.append((h, 0))
-        slots.append((h, 30))
+_TIME_SLOTS = [(h, m) for h in range(24) for m in (0, 30)]  # 48 slots
+_SLOTS_PER_PAGE = 16  # 4 rows × 4 columns
+_TIME_PAGES = [
+    _TIME_SLOTS[i:i + _SLOTS_PER_PAGE]
+    for i in range(0, len(_TIME_SLOTS), _SLOTS_PER_PAGE)
+]
+# Page 0: 00:00–07:30  |  Page 1: 08:00–15:30  |  Page 2: 16:00–23:30
+DEFAULT_TIME_PAGE = 2  # evening — most common for parties
+
+
+def time_picker_keyboard(party_id: int, page: int = DEFAULT_TIME_PAGE) -> InlineKeyboardMarkup:
+    """Paginated grid of half-hour buttons (full 24 h), 4 per row, with nav arrows."""
+    page = max(0, min(page, len(_TIME_PAGES) - 1))
+    slots = _TIME_PAGES[page]
+
     buttons = []
     row = []
     for h, m in slots:
@@ -90,6 +99,24 @@ def time_picker_keyboard(party_id: int) -> InlineKeyboardMarkup:
             row = []
     if row:
         buttons.append(row)
+
+    # Navigation arrows
+    nav = []
+    if page > 0:
+        prev_range = _TIME_PAGES[page - 1]
+        nav.append(InlineKeyboardButton(
+            f"◀ {prev_range[0][0]:02d}:00–{prev_range[-1][0]:02d}:30",
+            callback_data=f"time_page:{party_id}:{page - 1}",
+        ))
+    if page < len(_TIME_PAGES) - 1:
+        next_range = _TIME_PAGES[page + 1]
+        nav.append(InlineKeyboardButton(
+            f"{next_range[0][0]:02d}:00–{next_range[-1][0]:02d}:30 ▶",
+            callback_data=f"time_page:{party_id}:{page + 1}",
+        ))
+    if nav:
+        buttons.append(nav)
+
     buttons.append([InlineKeyboardButton("❌ Cancel", callback_data=f"edit_party_info:{party_id}")])
     return InlineKeyboardMarkup(buttons)
 
@@ -108,7 +135,7 @@ def edit_info_field_keyboard(party_id: int, field: str, has_value: bool) -> Inli
 def fillings_list_keyboard(party_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("➕ Add item", callback_data=f"add_filling:{party_id}")],
+            [InlineKeyboardButton("➕ I'm bringing…", callback_data=f"add_filling:{party_id}")],
             [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
         ]
     )

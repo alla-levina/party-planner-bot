@@ -122,7 +122,7 @@ async def open_party_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await query.edit_message_text(
         f"🎉 <b>{esc(party['name'])}</b>\n"
-        f"Items: {len(fillings)}  |  Members: {len(members)}",
+        f"Contributions: {len(fillings)}  |  Members: {len(members)}",
         parse_mode="HTML",
         reply_markup=party_menu_keyboard(party_id, is_admin=is_admin, is_owner=is_owner),
     )
@@ -194,7 +194,7 @@ async def leave_party_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await query.edit_message_text(
         f"🚪 Are you sure you want to leave <b>{esc(party['name'])}</b>?\n\n"
-        "All your items will be removed too.",
+        "All your contributions will be removed too.",
         parse_mode="HTML",
         reply_markup=confirm_leave_keyboard(party_id),
     )
@@ -218,7 +218,7 @@ async def cancel_party_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.edit_message_text(
         f"🚫 Are you sure you want to <b>cancel</b> the party <b>{esc(party['name'])}</b>?\n\n"
-        f"This will permanently delete the party, all {len(fillings)} item(s) "
+        f"This will permanently delete the party, all {len(fillings)} contribution(s) "
         f"and remove all {len(members)} member(s).\n\n"
         "⚠️ This cannot be undone!",
         parse_mode="HTML",
