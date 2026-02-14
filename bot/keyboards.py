@@ -75,13 +75,17 @@ def edit_info_keyboard(party_id: int, info: dict) -> InlineKeyboardMarkup:
 
 
 def time_picker_keyboard(party_id: int) -> InlineKeyboardMarkup:
-    """Grid of hour buttons for time selection (10:00–22:00), 3 per row."""
-    hours = list(range(10, 23))
+    """Grid of hour/half-hour buttons for time selection (10:00–22:30), 4 per row."""
+    slots = []
+    for h in range(10, 23):
+        slots.append((h, 0))
+        slots.append((h, 30))
     buttons = []
     row = []
-    for h in hours:
-        row.append(InlineKeyboardButton(f"{h:02d}:00", callback_data=f"pick_time:{party_id}:{h}"))
-        if len(row) == 3:
+    for h, m in slots:
+        label = f"{h:02d}:{m:02d}"
+        row.append(InlineKeyboardButton(label, callback_data=f"pick_time:{party_id}:{h}:{m}"))
+        if len(row) == 4:
             buttons.append(row)
             row = []
     if row:

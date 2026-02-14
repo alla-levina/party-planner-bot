@@ -1,6 +1,7 @@
 """Handlers for viewing and editing party info (date, address, map, description)."""
 
 import json
+import re
 from datetime import date
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -245,22 +246,74 @@ async def handle_time_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     parts = query.data.split(":")
     party_id = int(parts[1])
     hour = int(parts[2])
+    minute = int(parts[3])
 
     picked_date = context.user_data.get("edit_info_date")
     if picked_date is None:
         await query.edit_message_text("Something went wrong. Please try again.")
         return ConversationHandler.END
 
-    value = f"{picked_date.strftime('%b %d, %Y')} at {hour:02d}:00"
+    return await _save_datetime(
+        party_id, picked_date, hour, minute,
+        send_func=lambda text, **kw: query.edit_message_text(text, **kw),
+    )
+
+
+async def receive_time_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Accept a typed time like '18:30', '18.30', '1830' while in PICKING_TIME state."""
+    party_id = context.user_data.get("edit_info_party_id")
+    picked_date = context.user_data.get("edit_info_date")
+
+    if picked_date is None:
+        await update.message.reply_text("Something went wrong. Please try again.")
+        return ConversationHandler.END
+
+    raw = update.message.text.strip()
+
+    # Try parsing common time formats: "18:30", "18.30", "1830", "18 30"
+    m = re.match(r"^(\d{1,2})[:.\s]?(\d{2})$", raw)
+    if not m:
+        await update.message.reply_text(
+            "⚠️ Couldn't parse that time. Use the buttons above, or type like <b>18:30</b>.",
+            parse_mode="HTML",
+            reply_markup=time_picker_keyboard(party_id),
+        )
+        return PICKING_TIME
+
+    hour, minute = int(m.group(1)), int(m.group(2))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        await update.message.reply_text(
+            "⚠️ Invalid time. Hours 0–23, minutes 0–59. Try again.",
+            reply_markup=time_picker_keyboard(party_id),
+        )
+        return PICKING_TIME
+
+    return await _save_datetime(
+        party_id, picked_date, hour, minute,
+        send_func=lambda text, **kw: update.message.reply_text(text, **kw),
+    )
+
+
+async def receive_date_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle text typed while the inline calendar is showing."""
+    await update.message.reply_text(
+        "Please use the calendar buttons above to pick a date.",
+    )
+    return PICKING_DATE
+
+
+async def _save_datetime(party_id, picked_date, hour, minute, *, send_func) -> int:
+    """Save the datetime and show confirmation. Shared by button and text handlers."""
+    value = f"{picked_date.strftime('%b %d, %Y')} at {hour:02d}:{minute:02d}"
     await db.update_party_info(party_id, "info_datetime", value)
 
     party = await db.get_party_by_id(party_id)
     if party is None:
-        await query.edit_message_text("Party not found.", reply_markup=main_menu_keyboard())
+        await send_func("Party not found.", reply_markup=main_menu_keyboard())
         return ConversationHandler.END
     info = await db.get_party_info(party_id) or {}
 
-    await query.edit_message_text(
+    await send_func(
         f"✅ Date & time set!\n\n" + _build_info_text(party["name"], info),
         parse_mode="HTML",
         disable_web_page_preview=True,
@@ -459,9 +512,11 @@ def set_info_conversation() -> ConversationHandler:
             ],
             PICKING_DATE: [
                 CallbackQueryHandler(handle_calendar_callback, pattern=r"^cbcal_"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_date_text),
             ],
             PICKING_TIME: [
-                CallbackQueryHandler(handle_time_callback, pattern=r"^pick_time:\d+:\d+$"),
+                CallbackQueryHandler(handle_time_callback, pattern=r"^pick_time:\d+:\d+:\d+$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_time_text),
             ],
         },
         fallbacks=[
