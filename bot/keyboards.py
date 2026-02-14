@@ -74,6 +74,22 @@ def edit_info_keyboard(party_id: int, info: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+def time_picker_keyboard(party_id: int) -> InlineKeyboardMarkup:
+    """Grid of hour buttons for time selection (10:00–22:00), 3 per row."""
+    hours = list(range(10, 23))
+    buttons = []
+    row = []
+    for h in hours:
+        row.append(InlineKeyboardButton(f"{h:02d}:00", callback_data=f"pick_time:{party_id}:{h}"))
+        if len(row) == 3:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton("❌ Cancel", callback_data=f"edit_party_info:{party_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
 def edit_info_field_keyboard(party_id: int, field: str, has_value: bool) -> InlineKeyboardMarkup:
     """Keyboard shown when editing a single info field. Offers clear if value exists."""
     buttons = []

@@ -1,6 +1,9 @@
 """Handlers for viewing and editing party info (date, address, map, description)."""
 
-from telegram import Update
+import json
+from datetime import date
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
@@ -8,6 +11,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram_bot_calendar import WMonthTelegramCalendar, LSTEP
 
 from bot import database as db
 from bot.keyboards import (
@@ -15,6 +19,7 @@ from bot.keyboards import (
     edit_info_keyboard,
     main_menu_keyboard,
     party_info_keyboard,
+    time_picker_keyboard,
 )
 from bot.utils import esc
 
@@ -27,8 +32,39 @@ FIELD_LABELS = {
     "info_description": "📝 Description",
 }
 
-# Conversation state
+FIELD_PROMPTS = {
+    "info_address": "Send the address or share a location pin:",
+    "info_map_link": "Send a link or share a location pin:",
+    "info_description": "Write any notes or details about the party:",
+}
+
+# Calendar ID to namespace callback data
+CALENDAR_ID = 1
+
+# Conversation states
 TYPING_INFO_VALUE = 0
+PICKING_DATE = 1
+PICKING_TIME = 2
+
+
+def _calendar_markup(json_str: str) -> InlineKeyboardMarkup:
+    """Convert the JSON string from python-telegram-bot-calendar to InlineKeyboardMarkup."""
+    data = json.loads(json_str)
+    rows = []
+    for row in data["inline_keyboard"]:
+        rows.append([
+            InlineKeyboardButton(
+                text=btn["text"],
+                callback_data=btn.get("callback_data"),
+            )
+            for btn in row
+        ])
+    return InlineKeyboardMarkup(rows)
+
+
+def _new_calendar():
+    """Create a fresh WMonthTelegramCalendar starting from today."""
+    return WMonthTelegramCalendar(calendar_id=CALENDAR_ID, min_date=date.today())
 
 
 def _build_info_text(party_name: str, info: dict) -> str:
@@ -136,10 +172,24 @@ async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data["edit_info_party_id"] = party_id
     context.user_data["edit_info_field"] = field
 
+    # Date & time: show inline calendar
+    if field == "info_datetime":
+        cal_json, step = _new_calendar().build()
+        text = f"🕐 <b>Date & time</b>\n\n"
+        if current:
+            text += f"Current: {esc(current)}\n\n"
+        text += f"Select the {LSTEP[step]}:"
+        await query.edit_message_text(
+            text, parse_mode="HTML", reply_markup=_calendar_markup(cal_json),
+        )
+        return PICKING_DATE
+
+    # Other fields: show text prompt
+    prompt = FIELD_PROMPTS.get(field, "Type the new value:")
     text = f"✏️ <b>{label}</b>\n\n"
     if current:
-        text += f"Current value: {esc(current)}\n\n"
-    text += "Type the new value:"
+        text += f"Current: {esc(current)}\n\n"
+    text += prompt
 
     await query.edit_message_text(
         text,
@@ -148,6 +198,78 @@ async def set_info_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     return TYPING_INFO_VALUE
 
+
+# --------------- Calendar date picking ---------------
+
+async def handle_calendar_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Process inline calendar button presses."""
+    query = update.callback_query
+    await query.answer()
+
+    result, key, step = _new_calendar().process(query.data)
+
+    party_id = context.user_data.get("edit_info_party_id")
+
+    if not result and key:
+        # User navigated to a different month/year — update the calendar
+        await query.edit_message_text(
+            f"🕐 <b>Date & time</b>\n\nSelect the {LSTEP[step]}:",
+            parse_mode="HTML",
+            reply_markup=_calendar_markup(key),
+        )
+        return PICKING_DATE
+
+    if result:
+        # User picked a date — save it and show time picker
+        context.user_data["edit_info_date"] = result
+        await query.edit_message_text(
+            f"🕐 <b>Date & time</b>\n\n"
+            f"Date: <b>{result.strftime('%b %d, %Y')}</b>\n\n"
+            "Now pick the time:",
+            parse_mode="HTML",
+            reply_markup=time_picker_keyboard(party_id),
+        )
+        return PICKING_TIME
+
+    # No-op button (e.g. blank cells) — stay in same state
+    return PICKING_DATE
+
+
+# --------------- Time picking ---------------
+
+async def handle_time_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Process time button press, save datetime, return to edit menu."""
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split(":")
+    party_id = int(parts[1])
+    hour = int(parts[2])
+
+    picked_date = context.user_data.get("edit_info_date")
+    if picked_date is None:
+        await query.edit_message_text("Something went wrong. Please try again.")
+        return ConversationHandler.END
+
+    value = f"{picked_date.strftime('%b %d, %Y')} at {hour:02d}:00"
+    await db.update_party_info(party_id, "info_datetime", value)
+
+    party = await db.get_party_by_id(party_id)
+    if party is None:
+        await query.edit_message_text("Party not found.", reply_markup=main_menu_keyboard())
+        return ConversationHandler.END
+    info = await db.get_party_info(party_id) or {}
+
+    await query.edit_message_text(
+        f"✅ Date & time set!\n\n" + _build_info_text(party["name"], info),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=edit_info_keyboard(party_id, info),
+    )
+    return ConversationHandler.END
+
+
+# --------------- Text input ---------------
 
 async def receive_info_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Save the typed info value."""
@@ -199,6 +321,60 @@ async def receive_info_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
     return ConversationHandler.END
 
+
+# --------------- Location input ---------------
+
+async def receive_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle a shared location pin — save as Google Maps link."""
+    party_id = context.user_data.get("edit_info_party_id")
+    field = context.user_data.get("edit_info_field")
+    user = update.effective_user
+
+    if not await db.is_user_admin(party_id, user.id):
+        await update.message.reply_text("You don't have permission to do this.")
+        return ConversationHandler.END
+
+    # Only accept locations for address and map link fields
+    if field not in ("info_address", "info_map_link"):
+        await update.message.reply_text(
+            "📍 Location pins aren't supported for this field. Please type text instead.",
+            reply_markup=edit_info_field_keyboard(party_id, field, False),
+        )
+        return TYPING_INFO_VALUE
+
+    loc = update.message.location
+    maps_url = f"https://www.google.com/maps?q={loc.latitude},{loc.longitude}"
+
+    # Save the map link
+    await db.update_party_info(party_id, "info_map_link", maps_url)
+
+    party = await db.get_party_by_id(party_id)
+    if party is None:
+        await update.message.reply_text("Party not found.", reply_markup=main_menu_keyboard())
+        return ConversationHandler.END
+    info = await db.get_party_info(party_id) or {}
+
+    # If we were editing the address field, prompt to also type the address text
+    if field == "info_address":
+        await update.message.reply_text(
+            f"✅ Map link saved!\n\n"
+            "Now type the address text (street, building, etc.) or cancel:",
+            parse_mode="HTML",
+            reply_markup=edit_info_field_keyboard(party_id, field, False),
+        )
+        return TYPING_INFO_VALUE
+
+    # Editing map link — done
+    await update.message.reply_text(
+        f"✅ Map link saved!\n\n" + _build_info_text(party["name"], info),
+        parse_mode="HTML",
+        disable_web_page_preview=True,
+        reply_markup=edit_info_keyboard(party_id, info),
+    )
+    return ConversationHandler.END
+
+
+# --------------- Cancel / fallbacks ---------------
 
 async def cancel_set_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel editing and go back to edit info menu."""
@@ -279,6 +455,13 @@ def set_info_conversation() -> ConversationHandler:
         states={
             TYPING_INFO_VALUE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, receive_info_value),
+                MessageHandler(filters.LOCATION, receive_location),
+            ],
+            PICKING_DATE: [
+                CallbackQueryHandler(handle_calendar_callback, pattern=r"^cbcal_"),
+            ],
+            PICKING_TIME: [
+                CallbackQueryHandler(handle_time_callback, pattern=r"^pick_time:\d+:\d+$"),
             ],
         },
         fallbacks=[
