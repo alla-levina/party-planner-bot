@@ -122,6 +122,14 @@ async def confirm_kick_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.edit_message_text("You don't have permission to do this.")
         return
 
+    # Re-check: cannot kick the owner
+    if target_id == party["creator_id"]:
+        await query.edit_message_text(
+            "⚠️ You cannot remove the party owner.",
+            reply_markup=members_keyboard(party_id),
+        )
+        return
+
     member = await db.get_member(party_id, target_id)
     name = member["telegram_name"] if member else "Unknown"
 

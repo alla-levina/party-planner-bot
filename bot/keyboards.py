@@ -18,6 +18,7 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 
 def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = False) -> InlineKeyboardMarkup:
     buttons = [
+        [InlineKeyboardButton("ℹ️ Party info", callback_data=f"party_info:{party_id}")],
         [InlineKeyboardButton("📜 View fillings", callback_data=f"view_fillings:{party_id}")],
         [InlineKeyboardButton("➕ Add filling", callback_data=f"add_filling:{party_id}")],
         [InlineKeyboardButton("✏️ Edit my fillings", callback_data=f"edit_fillings:{party_id}")],
@@ -43,6 +44,42 @@ def parties_list_keyboard(parties: list[dict], user_id: int) -> InlineKeyboardMa
             label += f"  ({creator_name})"
         buttons.append([InlineKeyboardButton(label, callback_data=f"open_party:{p['id']}")])
     buttons.append([InlineKeyboardButton("⬅️ Main menu", callback_data="main_menu")])
+    return InlineKeyboardMarkup(buttons)
+
+
+# ---- Party info ----
+
+def party_info_keyboard(party_id: int, is_admin: bool = False) -> InlineKeyboardMarkup:
+    buttons = []
+    if is_admin:
+        buttons.append([InlineKeyboardButton("✏️ Edit info", callback_data=f"edit_party_info:{party_id}")])
+    buttons.append([InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def edit_info_keyboard(party_id: int, info: dict) -> InlineKeyboardMarkup:
+    """Keyboard for choosing which info field to edit. Shows 'Clear' hint if field is set."""
+    fields = [
+        ("info_datetime", "🕐 Date & time"),
+        ("info_address", "📍 Address"),
+        ("info_map_link", "🗺 Map link"),
+        ("info_description", "📝 Description"),
+    ]
+    buttons = []
+    for field_key, label in fields:
+        current = info.get(field_key)
+        btn_label = f"{label} ✅" if current else label
+        buttons.append([InlineKeyboardButton(btn_label, callback_data=f"set_info:{party_id}:{field_key}")])
+    buttons.append([InlineKeyboardButton("⬅️ Back to info", callback_data=f"party_info:{party_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
+def edit_info_field_keyboard(party_id: int, field: str, has_value: bool) -> InlineKeyboardMarkup:
+    """Keyboard shown when editing a single info field. Offers clear if value exists."""
+    buttons = []
+    if has_value:
+        buttons.append([InlineKeyboardButton("🗑 Clear this field", callback_data=f"clear_info:{party_id}:{field}")])
+    buttons.append([InlineKeyboardButton("❌ Cancel", callback_data=f"edit_party_info:{party_id}")])
     return InlineKeyboardMarkup(buttons)
 
 

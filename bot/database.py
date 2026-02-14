@@ -50,6 +50,15 @@ async def init_db(database_url: str) -> None:
             """
         )
 
+        # Migration: add party info columns if missing
+        for col in ("info_datetime", "info_address", "info_map_link", "info_description"):
+            await conn.execute(f"""
+                DO $$ BEGIN
+                    ALTER TABLE parties ADD COLUMN {col} TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+
 
 async def close_db() -> None:
     """Close the connection pool."""
@@ -115,6 +124,32 @@ async def get_parties_for_user(telegram_id: int) -> list[dict]:
             telegram_id,
         )
         return [dict(r) for r in rows]
+
+
+# --------------- Party info ---------------
+
+INFO_FIELDS = ("info_datetime", "info_address", "info_map_link", "info_description")
+
+
+async def get_party_info(party_id: int) -> dict | None:
+    """Return the info fields for a party."""
+    async with _pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT info_datetime, info_address, info_map_link, info_description FROM parties WHERE id = $1",
+            party_id,
+        )
+        return dict(row) if row else None
+
+
+async def update_party_info(party_id: int, field: str, value: str | None) -> None:
+    """Update a single info field on a party. field must be one of INFO_FIELDS."""
+    if field not in INFO_FIELDS:
+        raise ValueError(f"Invalid info field: {field}")
+    async with _pool.acquire() as conn:
+        await conn.execute(
+            f"UPDATE parties SET {field} = $1 WHERE id = $2",
+            value, party_id,
+        )
 
 
 # --------------- Members CRUD ---------------

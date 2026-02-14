@@ -10,6 +10,7 @@ A Telegram bot for organizing Maslenitsa (pancake celebration) parties. Guests c
 - **Add fillings** — claim a filling with duplicate prevention
 - **Edit fillings** — rename or remove your own fillings
 - **Member list** — see who's in the party
+- **Party info** — admins can set date/time, address, map link, and notes
 - **Admin roles** — owner can promote/demote admins, admins can kick members
 - **Leave / cancel party** — members can leave, admins can delete the party
 
@@ -72,4 +73,5 @@ maslenitsa-bot/
       party.py       — Create party, party menu, invite link
       fillings.py    — View, add, edit, remove fillings
       members.py     — View, search, kick, promote/demote members
+      party_info.py  — View and edit party info (date, address, map, notes)
 ```
