@@ -12,6 +12,7 @@ from bot.handlers.party import (
     confirm_cancel_party_callback,
     confirm_leave_callback,
     create_party_conversation,
+    invite_contact_conversation,
     leave_party_callback,
     open_party_callback,
     invite_link_callback,
@@ -55,6 +56,7 @@ def main() -> None:
     app.add_handler(add_filling_conversation())
     app.add_handler(rename_filling_conversation())
     app.add_handler(search_member_conversation())
+    app.add_handler(invite_contact_conversation())
     app.add_handler(set_info_conversation())
 
     # --- Command handlers ---

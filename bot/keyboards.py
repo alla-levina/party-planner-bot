@@ -1,5 +1,7 @@
 """Inline keyboard builders."""
 
+from urllib.parse import quote
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
@@ -23,7 +25,7 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
         [InlineKeyboardButton("➕ I'm bringing…", callback_data=f"add_filling:{party_id}")],
         [InlineKeyboardButton("✏️ Edit my contributions", callback_data=f"edit_fillings:{party_id}")],
         [InlineKeyboardButton("👥 Members", callback_data=f"members:{party_id}")],
-        [InlineKeyboardButton("🔗 Invite link", callback_data=f"invite_link:{party_id}")],
+        [InlineKeyboardButton("🔗 Invite", callback_data=f"invite_link:{party_id}")],
     ]
     if is_admin:
         buttons.append([InlineKeyboardButton("🚫 Cancel party", callback_data=f"cancel_party:{party_id}")])
@@ -31,6 +33,19 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
         buttons.append([InlineKeyboardButton("🚪 Leave party", callback_data=f"leave_party:{party_id}")])
     buttons.append([InlineKeyboardButton("⬅️ Back to my parties", callback_data="my_parties")])
     return InlineKeyboardMarkup(buttons)
+
+
+# ---- Invite menu ----
+
+def invite_keyboard(party_id: int, invite_link: str) -> InlineKeyboardMarkup:
+    """Keyboard with all invite options: share, add contact, send link to contact."""
+    share_url = f"https://t.me/share/url?url={quote(invite_link, safe='')}"
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📤 Share link", url=share_url)],
+        [InlineKeyboardButton("👤 Add contact", callback_data=f"add_contact:{party_id}")],
+        [InlineKeyboardButton("📨 Send invite to contact", callback_data=f"send_link_contact:{party_id}")],
+        [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
+    ])
 
 
 # ---- Party list (my parties) ----
