@@ -5,7 +5,7 @@ import logging
 
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 
-from bot.config import BOT_TOKEN
+from bot.config import BOT_TOKEN, DATABASE_URL
 from bot import database as db
 from bot.handlers.start import start_command, main_menu_callback, my_parties_callback
 from bot.handlers.party import (
@@ -73,12 +73,17 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(promote_admin_callback, pattern=r"^promote_admin:\d+:\d+$"))
     app.add_handler(CallbackQueryHandler(demote_admin_callback, pattern=r"^demote_admin:\d+:\d+$"))
 
-    # --- Init DB then start ---
+    # --- Init DB on startup, close on shutdown ---
     async def post_init(application) -> None:
-        await db.init_db()
+        await db.init_db(DATABASE_URL)
         logger.info("Database initialised.")
 
+    async def post_shutdown(application) -> None:
+        await db.close_db()
+        logger.info("Database pool closed.")
+
     app.post_init = post_init
+    app.post_shutdown = post_shutdown
 
     logger.info("Starting bot…")
     app.run_polling(drop_pending_updates=True)
