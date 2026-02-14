@@ -10,7 +10,7 @@ A Telegram bot for organizing parties. Guests coordinate who brings what — so 
 - **Add contributions** — claim what you're bringing with duplicate prevention
 - **Edit contributions** — rename or remove your own contributions
 - **Member list** — see who's in the party, search by name
-- **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
+- **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes; all members are notified when info changes (debounced — rapid edits are batched into one message)
 - **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
 - **Admin roles** — admins can promote/demote other members and kick non-owners
 - **Leave / cancel party** — members can leave, admins can delete the party

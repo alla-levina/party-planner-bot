@@ -1,6 +1,7 @@
 """Handlers for viewing and editing party info (date, address, map, description)."""
 
 import json
+import logging
 import re
 from datetime import date
 
@@ -23,6 +24,8 @@ from bot.keyboards import (
     time_picker_keyboard,
 )
 from bot.utils import esc
+
+logger = logging.getLogger(__name__)
 
 NOT_A_MEMBER_TEXT = "⚠️ You are no longer a member of this party."
 
@@ -86,6 +89,63 @@ def _build_info_text(party_name: str, info: dict) -> str:
         lines.append("No info has been added yet.")
 
     return "\n".join(lines)
+
+
+# --------------- Debounced info-change notifications ---------------
+
+NOTIFICATION_DELAY = 30  # seconds — changes within this window are batched
+
+
+def _schedule_info_notification(
+    context: ContextTypes.DEFAULT_TYPE, party_id: int, admin_id: int,
+) -> None:
+    """Schedule (or reschedule) a debounced notification for party info changes.
+
+    Every call resets the 30-second timer so rapid edits produce only one message.
+    """
+    job_name = f"info_notify_{party_id}"
+    # Cancel any pending notification for this party (resets the timer)
+    for job in context.job_queue.get_jobs_by_name(job_name):
+        job.schedule_removal()
+    # Schedule a new one
+    context.job_queue.run_once(
+        _send_info_notification,
+        when=NOTIFICATION_DELAY,
+        data={"party_id": party_id, "admin_id": admin_id},
+        name=job_name,
+    )
+
+
+async def _send_info_notification(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Job callback: notify all party members (except the admin) about info changes."""
+    data = context.job.data
+    party_id = data["party_id"]
+    admin_id = data["admin_id"]
+
+    party = await db.get_party_by_id(party_id)
+    if party is None:
+        return  # Party was deleted before notification fired
+
+    info = await db.get_party_info(party_id) or {}
+    members = await db.get_members(party_id)
+
+    text = (
+        f"📢 <b>Party info has been updated!</b>\n\n"
+        + _build_info_text(party["name"], info)
+    )
+
+    for m in members:
+        if m["telegram_id"] == admin_id:
+            continue
+        try:
+            await context.bot.send_message(
+                chat_id=m["telegram_id"],
+                text=text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            logger.debug("Could not notify user %s", m["telegram_id"])
 
 
 # --------------- View party info ---------------
@@ -256,6 +316,8 @@ async def handle_time_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     return await _save_datetime(
         party_id, picked_date, hour, minute,
         send_func=lambda text, **kw: query.edit_message_text(text, **kw),
+        context=context,
+        admin_id=update.effective_user.id,
     )
 
 
@@ -313,6 +375,8 @@ async def receive_time_text(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return await _save_datetime(
         party_id, picked_date, hour, minute,
         send_func=lambda text, **kw: update.message.reply_text(text, **kw),
+        context=context,
+        admin_id=update.effective_user.id,
     )
 
 
@@ -324,7 +388,7 @@ async def receive_date_text(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return PICKING_DATE
 
 
-async def _save_datetime(party_id, picked_date, hour, minute, *, send_func) -> int:
+async def _save_datetime(party_id, picked_date, hour, minute, *, send_func, context, admin_id) -> int:
     """Save the datetime and show confirmation. Shared by button and text handlers."""
     value = f"{picked_date.strftime('%b %d, %Y')} at {hour:02d}:{minute:02d}"
     await db.update_party_info(party_id, "info_datetime", value)
@@ -334,6 +398,8 @@ async def _save_datetime(party_id, picked_date, hour, minute, *, send_func) -> i
         await send_func("Party not found.", reply_markup=main_menu_keyboard())
         return ConversationHandler.END
     info = await db.get_party_info(party_id) or {}
+
+    _schedule_info_notification(context, party_id, admin_id)
 
     await send_func(
         f"✅ Date & time set!\n\n" + _build_info_text(party["name"], info),
@@ -388,6 +454,8 @@ async def receive_info_value(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
     info = await db.get_party_info(party_id) or {}
 
+    _schedule_info_notification(context, party_id, user.id)
+
     await update.message.reply_text(
         f"✅ {label} updated!\n\n" + _build_info_text(party["name"], info),
         parse_mode="HTML",
@@ -428,6 +496,8 @@ async def receive_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await update.message.reply_text("Party not found.", reply_markup=main_menu_keyboard())
         return ConversationHandler.END
     info = await db.get_party_info(party_id) or {}
+
+    _schedule_info_notification(context, party_id, user.id)
 
     # If we were editing the address field, prompt to also type the address text
     if field == "info_address":
@@ -505,6 +575,8 @@ async def clear_info_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
 
     await db.update_party_info(party_id, field, None)
+
+    _schedule_info_notification(context, party_id, user.id)
 
     info = await db.get_party_info(party_id) or {}
     label = FIELD_LABELS.get(field, field)

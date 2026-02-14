@@ -1,5 +1,7 @@
 """Handlers for creating a party, opening a party menu, and invite links."""
 
+import logging
+
 from telegram import Update
 from telegram.ext import (
     ContextTypes,
@@ -8,6 +10,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
+logger = logging.getLogger(__name__)
 
 from bot import database as db
 from bot.keyboards import (
@@ -240,6 +244,7 @@ async def confirm_cancel_party_callback(update: Update, context: ContextTypes.DE
         return
 
     party_name = party["name"]
+    members = await db.get_members(party_id)
     await db.delete_party(party_id)
 
     await query.edit_message_text(
@@ -247,6 +252,19 @@ async def confirm_cancel_party_callback(update: Update, context: ContextTypes.DE
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )
+
+    # Notify all other members that the party was cancelled
+    for m in members:
+        if m["telegram_id"] == user.id:
+            continue
+        try:
+            await context.bot.send_message(
+                chat_id=m["telegram_id"],
+                text=f"🚫 Party <b>{esc(party_name)}</b> has been cancelled by the admin.",
+                parse_mode="HTML",
+            )
+        except Exception:
+            logger.debug("Could not notify user %s about cancellation", m["telegram_id"])
 
 
 async def confirm_leave_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
