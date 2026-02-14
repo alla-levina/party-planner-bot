@@ -18,5 +18,5 @@ if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL is not set. "
         "Add a PostgreSQL connection string to your .env file, e.g.:\n"
-        "DATABASE_URL=postgresql://user:password@localhost:5432/maslenitsa"
+        "DATABASE_URL=postgresql://user:password@localhost:5432/partybot"
     )

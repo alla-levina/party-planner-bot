@@ -101,7 +101,7 @@ async def kick_member_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.edit_message_text(
         f"Are you sure you want to remove <b>{esc(member['telegram_name'])}</b> "
         f"from <b>{esc(party['name'])}</b>?\n\n"
-        "All their fillings will be removed too.",
+        "All their items will be removed too.",
         parse_mode="HTML",
         reply_markup=confirm_kick_keyboard(party_id, target_id),
     )
@@ -140,7 +140,7 @@ async def confirm_kick_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await context.bot.send_message(
             chat_id=target_id,
             text=f"🚪 You have been removed from the party <b>{esc(party['name'])}</b> by an admin.\n"
-                 "All your fillings have been removed.",
+                 "All your items have been removed.",
             parse_mode="HTML",
             reply_markup=main_menu_keyboard(),
         )

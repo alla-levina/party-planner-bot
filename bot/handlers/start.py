@@ -44,9 +44,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # No deep-link → show main menu
     await update.message.reply_text(
-        "🥞 <b>Welcome to Maslenitsa Party Bot!</b>\n\n"
-        "Create a party and invite friends to coordinate pancake fillings "
-        "so nobody brings the same thing.",
+        "🎉 <b>Welcome to Party Planner Bot!</b>\n\n"
+        "Create a party and invite friends to coordinate who brings what "
+        "— so nobody brings the same thing.",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )
@@ -57,7 +57,7 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(
-        "🥞 <b>Maslenitsa Party Bot</b>\n\nWhat would you like to do?",
+        "🎉 <b>Party Planner Bot</b>\n\nWhat would you like to do?",
         parse_mode="HTML",
         reply_markup=main_menu_keyboard(),
     )

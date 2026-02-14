@@ -8,7 +8,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("🥞 Create a new party", callback_data="create_party")],
+            [InlineKeyboardButton("🎉 Create a new party", callback_data="create_party")],
             [InlineKeyboardButton("📋 My parties", callback_data="my_parties")],
         ]
     )
@@ -19,9 +19,9 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
 def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = False) -> InlineKeyboardMarkup:
     buttons = [
         [InlineKeyboardButton("ℹ️ Party info", callback_data=f"party_info:{party_id}")],
-        [InlineKeyboardButton("📜 View fillings", callback_data=f"view_fillings:{party_id}")],
-        [InlineKeyboardButton("➕ Add filling", callback_data=f"add_filling:{party_id}")],
-        [InlineKeyboardButton("✏️ Edit my fillings", callback_data=f"edit_fillings:{party_id}")],
+        [InlineKeyboardButton("📜 View items", callback_data=f"view_fillings:{party_id}")],
+        [InlineKeyboardButton("➕ Add item", callback_data=f"add_filling:{party_id}")],
+        [InlineKeyboardButton("✏️ Edit my items", callback_data=f"edit_fillings:{party_id}")],
         [InlineKeyboardButton("👥 Members", callback_data=f"members:{party_id}")],
         [InlineKeyboardButton("🔗 Invite link", callback_data=f"invite_link:{party_id}")],
     ]
@@ -38,7 +38,7 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
 def parties_list_keyboard(parties: list[dict], user_id: int) -> InlineKeyboardMarkup:
     buttons = []
     for p in parties:
-        label = f"🥞 {p['name']}"
+        label = f"🎉 {p['name']}"
         creator_name = p.get("creator_name")
         if creator_name and p["creator_id"] != user_id:
             label += f"  ({creator_name})"
@@ -108,7 +108,7 @@ def edit_info_field_keyboard(party_id: int, field: str, has_value: bool) -> Inli
 def fillings_list_keyboard(party_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("➕ Add filling", callback_data=f"add_filling:{party_id}")],
+            [InlineKeyboardButton("➕ Add item", callback_data=f"add_filling:{party_id}")],
             [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
         ]
     )

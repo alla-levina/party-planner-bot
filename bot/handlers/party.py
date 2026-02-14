@@ -29,7 +29,7 @@ async def create_party_start(update: Update, context: ContextTypes.DEFAULT_TYPE)
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(
-        "🥞 <b>Create a new party</b>\n\nSend me the name for your party:",
+        "🎉 <b>Create a new party</b>\n\nSend me the name for your party:",
         parse_mode="HTML",
         reply_markup=cancel_keyboard(),
     )
@@ -121,8 +121,8 @@ async def open_party_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     members = await db.get_members(party_id)
 
     await query.edit_message_text(
-        f"🥞 <b>{esc(party['name'])}</b>\n"
-        f"Fillings: {len(fillings)}  |  Members: {len(members)}",
+        f"🎉 <b>{esc(party['name'])}</b>\n"
+        f"Items: {len(fillings)}  |  Members: {len(members)}",
         parse_mode="HTML",
         reply_markup=party_menu_keyboard(party_id, is_admin=is_admin, is_owner=is_owner),
     )
@@ -194,7 +194,7 @@ async def leave_party_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     await query.edit_message_text(
         f"🚪 Are you sure you want to leave <b>{esc(party['name'])}</b>?\n\n"
-        "All your fillings will be removed too.",
+        "All your items will be removed too.",
         parse_mode="HTML",
         reply_markup=confirm_leave_keyboard(party_id),
     )
@@ -218,7 +218,7 @@ async def cancel_party_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.edit_message_text(
         f"🚫 Are you sure you want to <b>cancel</b> the party <b>{esc(party['name'])}</b>?\n\n"
-        f"This will permanently delete the party, all {len(fillings)} filling(s) "
+        f"This will permanently delete the party, all {len(fillings)} item(s) "
         f"and remove all {len(members)} member(s).\n\n"
         "⚠️ This cannot be undone!",
         parse_mode="HTML",

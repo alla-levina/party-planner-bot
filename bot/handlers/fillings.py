@@ -45,9 +45,9 @@ async def view_fillings_callback(update: Update, context: ContextTypes.DEFAULT_T
     fillings = await db.get_fillings(party_id)
 
     if not fillings:
-        text = f"📜 <b>Fillings for {esc(party['name'])}</b>\n\nNo fillings yet — be the first to add one!"
+        text = f"📜 <b>Items for {esc(party['name'])}</b>\n\nNo items yet — be the first to add one!"
     else:
-        lines = [f"📜 <b>Fillings for {esc(party['name'])}</b>\n"]
+        lines = [f"📜 <b>Items for {esc(party['name'])}</b>\n"]
         for i, f in enumerate(fillings, 1):
             lines.append(f"{i}. {esc(f['name'])}  — <i>{esc(f['added_by_name'])}</i>")
         text = "\n".join(lines)
@@ -76,7 +76,7 @@ async def add_filling_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     context.user_data["add_filling_party_id"] = party_id
 
     await query.edit_message_text(
-        "➕ <b>Add a filling</b>\n\nType the name of the filling you'd like to bring:",
+        "➕ <b>Add an item</b>\n\nWhat would you like to bring?",
         parse_mode="HTML",
         reply_markup=cancel_keyboard(),
     )
@@ -113,7 +113,7 @@ async def receive_filling_name(update: Update, context: ContextTypes.DEFAULT_TYP
     if dup:
         await update.message.reply_text(
             f"⚠️ <b>\"{esc(dup['name'])}\"</b> is already taken by <i>{esc(dup['added_by_name'])}</i>!\n"
-            "Please pick a different filling.",
+            "Please pick something different.",
             parse_mode="HTML",
             reply_markup=cancel_keyboard(),
         )
@@ -158,13 +158,13 @@ async def edit_fillings_callback(update: Update, context: ContextTypes.DEFAULT_T
     fillings = await db.get_user_fillings(party_id, user.id)
     if not fillings:
         await query.edit_message_text(
-            "You haven't added any fillings to this party yet.",
+            "You haven't added any items to this party yet.",
             reply_markup=party_menu_keyboard(party_id),
         )
         return
 
     await query.edit_message_text(
-        "✏️ <b>Your fillings</b> — tap one to edit or remove:",
+        "✏️ <b>Your items</b> — tap one to edit or remove:",
         parse_mode="HTML",
         reply_markup=user_fillings_keyboard(fillings, party_id),
     )
@@ -178,7 +178,7 @@ async def edit_one_filling_callback(update: Update, context: ContextTypes.DEFAUL
 
     filling = await db.get_filling_by_id(filling_id)
     if filling is None:
-        await query.edit_message_text("Filling not found.")
+        await query.edit_message_text("Item not found.")
         return
 
     user = update.effective_user
@@ -187,15 +187,15 @@ async def edit_one_filling_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_text(NOT_A_MEMBER_TEXT, reply_markup=main_menu_keyboard())
         return
 
-    # Only the filling's owner (or an admin) can edit it
+    # Only the item's owner (or an admin) can edit it
     is_admin = bool(member.get("is_admin"))
     if filling["added_by_id"] != user.id and not is_admin:
-        await query.edit_message_text("⚠️ You can only edit your own fillings.",
+        await query.edit_message_text("⚠️ You can only edit your own items.",
                                       reply_markup=party_menu_keyboard(filling["party_id"]))
         return
 
     await query.edit_message_text(
-        f"Filling: <b>{esc(filling['name'])}</b>\n\nWhat would you like to do?",
+        f"Item: <b>{esc(filling['name'])}</b>\n\nWhat would you like to do?",
         parse_mode="HTML",
         reply_markup=edit_filling_keyboard(filling_id, filling["party_id"]),
     )
@@ -211,7 +211,7 @@ async def remove_filling_callback(update: Update, context: ContextTypes.DEFAULT_
 
     filling = await db.get_filling_by_id(filling_id)
     if filling is None:
-        await query.edit_message_text("Filling not found.")
+        await query.edit_message_text("Item not found.")
         return
 
     user = update.effective_user
@@ -220,10 +220,10 @@ async def remove_filling_callback(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_text(NOT_A_MEMBER_TEXT, reply_markup=main_menu_keyboard())
         return
 
-    # Only the filling's owner (or an admin) can remove it
+    # Only the item's owner (or an admin) can remove it
     is_admin = bool(member.get("is_admin"))
     if filling["added_by_id"] != user.id and not is_admin:
-        await query.edit_message_text("⚠️ You can only remove your own fillings.",
+        await query.edit_message_text("⚠️ You can only remove your own items.",
                                       reply_markup=party_menu_keyboard(filling["party_id"]))
         return
 
@@ -247,7 +247,7 @@ async def rename_filling_start(update: Update, context: ContextTypes.DEFAULT_TYP
 
     filling = await db.get_filling_by_id(filling_id)
     if filling is None:
-        await query.edit_message_text("Filling not found.")
+        await query.edit_message_text("Item not found.")
         return ConversationHandler.END
 
     user = update.effective_user
@@ -258,7 +258,7 @@ async def rename_filling_start(update: Update, context: ContextTypes.DEFAULT_TYP
 
     is_admin = bool(member.get("is_admin"))
     if filling["added_by_id"] != user.id and not is_admin:
-        await query.edit_message_text("⚠️ You can only rename your own fillings.",
+        await query.edit_message_text("⚠️ You can only rename your own items.",
                                       reply_markup=party_menu_keyboard(filling["party_id"]))
         return ConversationHandler.END
 
@@ -312,7 +312,7 @@ async def receive_rename(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await db.rename_filling(filling_id, new_name)
 
     await update.message.reply_text(
-        f"✅ Filling renamed to <b>{esc(new_name)}</b>.",
+        f"✅ Renamed to <b>{esc(new_name)}</b>.",
         parse_mode="HTML",
         reply_markup=party_menu_keyboard(party_id),
     )

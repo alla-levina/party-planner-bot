@@ -1,14 +1,14 @@
-# Maslenitsa Party Bot
+# Party Planner Bot
 
-A Telegram bot for organizing Maslenitsa (pancake celebration) parties. Guests coordinate fillings so nobody brings duplicates.
+A Telegram bot for organizing parties. Guests coordinate who brings what — so nobody brings the same thing.
 
 ## Features
 
 - **Create parties** with unique invite links (duplicate name prevention per owner)
 - **Join parties** via shareable deep links
-- **View fillings** — see what everyone is bringing
-- **Add fillings** — claim a filling with duplicate prevention
-- **Edit fillings** — rename or remove your own fillings
+- **View items** — see what everyone is bringing
+- **Add items** — claim an item with duplicate prevention
+- **Edit items** — rename or remove your own items
 - **Member list** — see who's in the party, search by name
 - **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
 - **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
@@ -36,7 +36,7 @@ cp .env.example .env
 
 ```
 BOT_TOKEN=your-telegram-bot-token-here
-DATABASE_URL=postgresql://user:password@localhost:5432/maslenitsa
+DATABASE_URL=postgresql://user:password@localhost:5432/partybot
 ```
 
 5. Run the bot:
@@ -57,7 +57,7 @@ python -m bot.main
 
 - `/start` — Main menu: create a party or view your parties
 - Share the invite link with friends so they can join your party
-- Use inline buttons to manage fillings, members, and party info
+- Use inline buttons to manage items, members, and party info
 
 ## Dependencies
 
@@ -79,7 +79,7 @@ maslenitsa-bot/
     handlers/
       start.py       — /start, main menu, deep-link join
       party.py       — Create party, party menu, invite link, leave/cancel
-      fillings.py    — View, add, edit, remove fillings
+      fillings.py    — View, add, edit, remove items
       members.py     — View, search, kick, promote/demote members
       party_info.py  — View/edit party info (date via calendar, address, map, notes, location pins)
   requirements.txt   — Python dependencies
