@@ -2,11 +2,13 @@
 
 import logging
 
+from telegram import BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
 
 from bot.config import BOT_TOKEN, DATABASE_URL
 from bot import database as db
-from bot.handlers.start import start_command, main_menu_callback, my_parties_callback
+
+from bot.handlers.start import start_command, parties_command, main_menu_callback, my_parties_callback
 from bot.handlers.party import (
     cancel_party_callback,
     confirm_cancel_party_callback,
@@ -61,6 +63,7 @@ def main() -> None:
 
     # --- Command handlers ---
     app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CommandHandler("parties", parties_command))
 
     # --- Callback query handlers ---
     app.add_handler(CallbackQueryHandler(main_menu_callback, pattern=r"^main_menu$"))
@@ -88,6 +91,10 @@ def main() -> None:
     async def post_init(application) -> None:
         await db.init_db(DATABASE_URL)
         logger.info("Database initialised.")
+        await application.bot.set_my_commands([
+            BotCommand("start", "Main menu"),
+            BotCommand("parties", "My parties"),
+        ])
 
     async def post_shutdown(application) -> None:
         await db.close_db()

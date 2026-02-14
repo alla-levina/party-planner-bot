@@ -155,7 +155,10 @@ async def update_party_info(party_id: int, field: str, value: str | None) -> Non
 # --------------- Members CRUD ---------------
 
 async def add_member(party_id: int, telegram_id: int, telegram_name: str, is_admin: bool = False) -> bool:
-    """Add a member to a party. Returns True if newly added, False if already present."""
+    """Add a member to a party. Returns True if newly added, False if already present.
+
+    If the member already exists, their display name is refreshed.
+    """
     async with _pool.acquire() as conn:
         try:
             await conn.execute(
@@ -164,7 +167,21 @@ async def add_member(party_id: int, telegram_id: int, telegram_name: str, is_adm
             )
             return True
         except asyncpg.UniqueViolationError:
+            # User already in party — refresh their display name
+            await conn.execute(
+                "UPDATE party_members SET telegram_name = $1 WHERE party_id = $2 AND telegram_id = $3",
+                telegram_name, party_id, telegram_id,
+            )
             return False
+
+
+async def update_member_name(party_id: int, telegram_id: int, telegram_name: str) -> None:
+    """Update a member's display name (keeps it current when usernames change)."""
+    async with _pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE party_members SET telegram_name = $1 WHERE party_id = $2 AND telegram_id = $3",
+            telegram_name, party_id, telegram_id,
+        )
 
 
 async def get_members(party_id: int) -> list[dict]:

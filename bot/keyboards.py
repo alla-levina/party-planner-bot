@@ -38,12 +38,11 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
 # ---- Invite menu ----
 
 def invite_keyboard(party_id: int, invite_link: str) -> InlineKeyboardMarkup:
-    """Keyboard with all invite options: share, add contact, send link to contact."""
+    """Keyboard with invite options: share link via Telegram and add contact."""
     share_url = f"https://t.me/share/url?url={quote(invite_link, safe='')}"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📤 Share link", url=share_url)],
         [InlineKeyboardButton("👤 Add contact", callback_data=f"add_contact:{party_id}")],
-        [InlineKeyboardButton("📨 Send invite to contact", callback_data=f"send_link_contact:{party_id}")],
         [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
     ])
 

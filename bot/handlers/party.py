@@ -119,6 +119,11 @@ async def open_party_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
+    # Refresh display name if it changed (username update, etc.)
+    display = user_display_name(user)
+    if member["telegram_name"] != display:
+        await db.update_member_name(party_id, user.id, display)
+
     is_admin = bool(member.get("is_admin"))
     is_owner = party["creator_id"] == user.id
 
@@ -335,7 +340,6 @@ async def add_contact_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     context.user_data["invite_party_id"] = party_id
-    context.user_data["invite_mode"] = "add"
 
     await query.edit_message_text(
         "👤 <b>Add contact to the party</b>\n\n"
@@ -346,42 +350,9 @@ async def add_contact_start(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return WAITING_CONTACT
 
 
-async def send_link_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Start the 'send link to contact' flow — ask user to share a contact card."""
-    query = update.callback_query
-    await query.answer()
-    party_id = int(query.data.split(":")[1])
-
-    user = update.effective_user
-    member = await db.get_member(party_id, user.id)
-    if member is None:
-        await query.edit_message_text(
-            "⚠️ You are no longer a member of this party.",
-            reply_markup=main_menu_keyboard(),
-        )
-        return ConversationHandler.END
-
-    party = await db.get_party_by_id(party_id)
-    if party is None:
-        await query.edit_message_text("Party not found.", reply_markup=main_menu_keyboard())
-        return ConversationHandler.END
-
-    context.user_data["invite_party_id"] = party_id
-    context.user_data["invite_mode"] = "send"
-
-    await query.edit_message_text(
-        "📨 <b>Send invite to a contact</b>\n\n"
-        "Share a contact using the 📎 attachment button.",
-        parse_mode="HTML",
-        reply_markup=_cancel_invite_kb(party_id),
-    )
-    return WAITING_CONTACT
-
-
 async def receive_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handle a shared contact — add them to party or send them the invite link."""
+    """Handle a shared contact — add them to the party."""
     party_id = context.user_data.get("invite_party_id")
-    mode = context.user_data.get("invite_mode")
     user = update.effective_user
     contact = update.message.contact
 
@@ -417,11 +388,21 @@ async def receive_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return WAITING_CONTACT
 
-    # Build a display name from the contact card
-    contact_name = contact.first_name or ""
-    if contact.last_name:
-        contact_name += f" {contact.last_name}"
-    contact_name = contact_name.strip() or "Unknown"
+    # Try to get the actual Telegram profile (has username); fall back to contact card
+    try:
+        chat = await context.bot.get_chat(contact_id)
+        if chat.username:
+            contact_name = f"@{chat.username}"
+        else:
+            contact_name = chat.first_name or ""
+            if chat.last_name:
+                contact_name += f" {chat.last_name}"
+            contact_name = contact_name.strip() or "Unknown"
+    except Exception:
+        contact_name = contact.first_name or ""
+        if contact.last_name:
+            contact_name += f" {contact.last_name}"
+        contact_name = contact_name.strip() or "Unknown"
 
     # Check if already a member
     existing = await db.get_member(party_id, contact_id)
@@ -433,63 +414,32 @@ async def receive_contact(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return ConversationHandler.END
 
-    if mode == "add":
-        # Add directly to the party
-        await db.add_member(party_id, contact_id, contact_name)
+    # Add directly to the party
+    await db.add_member(party_id, contact_id, contact_name)
 
-        # Try to notify the added person
-        try:
-            await context.bot.send_message(
-                chat_id=contact_id,
-                text=(
-                    f"🎉 You've been added to <b>{esc(party['name'])}</b> "
-                    f"by {esc(user_display_name(user))}!"
-                ),
-                parse_mode="HTML",
-            )
-            await update.message.reply_text(
-                f"✅ <b>{esc(contact_name)}</b> has been added and notified!",
-                parse_mode="HTML",
-                reply_markup=_after_invite_kb(party_id),
-            )
-        except Exception:
-            await update.message.reply_text(
-                f"✅ <b>{esc(contact_name)}</b> has been added to the party.\n\n"
-                "⚠️ Couldn't notify them — they haven't started the bot yet. "
-                "They'll see the party once they open the bot.",
-                parse_mode="HTML",
-                reply_markup=_after_invite_kb(party_id),
-            )
-
-    elif mode == "send":
-        # Send the invite link to the contact
-        bot_info = await context.bot.get_me()
-        link = f"https://t.me/{bot_info.username}?start={party['code']}"
-
-        try:
-            await context.bot.send_message(
-                chat_id=contact_id,
-                text=(
-                    f"🎉 <b>{esc(user_display_name(user))}</b> invited you to join "
-                    f"<b>{esc(party['name'])}</b>!\n\n"
-                    f"Tap this link to join:\n"
-                    f"<a href=\"{esc(link)}\">{esc(link)}</a>"
-                ),
-                parse_mode="HTML",
-            )
-            await update.message.reply_text(
-                f"✅ Invite sent to <b>{esc(contact_name)}</b>!",
-                parse_mode="HTML",
-                reply_markup=_after_invite_kb(party_id),
-            )
-        except Exception:
-            await update.message.reply_text(
-                f"⚠️ Couldn't send the invite to <b>{esc(contact_name)}</b> — "
-                "they haven't started the bot yet.\n\n"
-                "Share the invite link with them directly instead.",
-                parse_mode="HTML",
-                reply_markup=_after_invite_kb(party_id),
-            )
+    # Try to notify the added person
+    try:
+        await context.bot.send_message(
+            chat_id=contact_id,
+            text=(
+                f"🎉 You've been added to <b>{esc(party['name'])}</b> "
+                f"by {esc(user_display_name(user))}!"
+            ),
+            parse_mode="HTML",
+        )
+        await update.message.reply_text(
+            f"✅ <b>{esc(contact_name)}</b> has been added and notified!",
+            parse_mode="HTML",
+            reply_markup=_after_invite_kb(party_id),
+        )
+    except Exception:
+        await update.message.reply_text(
+            f"✅ <b>{esc(contact_name)}</b> has been added to the party.\n\n"
+            "⚠️ Couldn't notify them — they haven't started the bot yet. "
+            "They'll see the party once they open the bot.",
+            parse_mode="HTML",
+            reply_markup=_after_invite_kb(party_id),
+        )
 
     return ConversationHandler.END
 
@@ -529,11 +479,10 @@ async def cancel_invite_contact(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 def invite_contact_conversation() -> ConversationHandler:
-    """Build the ConversationHandler for adding/inviting contacts."""
+    """Build the ConversationHandler for adding contacts to a party."""
     return ConversationHandler(
         entry_points=[
             CallbackQueryHandler(add_contact_start, pattern=r"^add_contact:\d+$"),
-            CallbackQueryHandler(send_link_start, pattern=r"^send_link_contact:\d+$"),
         ],
         states={
             WAITING_CONTACT: [

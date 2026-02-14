@@ -5,15 +5,18 @@ A Telegram bot for organizing parties. Guests coordinate who brings what — so 
 ## Features
 
 - **Create parties** with unique invite links (duplicate name prevention per owner)
-- **Join parties** via shareable deep links
+- **Invite guests** — share the link via Telegram's native share dialog, or add a contact directly to the party
+- **Join parties** via shareable deep links or being added by a member
 - **View contributions** — see what everyone is bringing
 - **Add contributions** — claim what you're bringing with duplicate prevention
 - **Edit contributions** — rename or remove your own contributions
 - **Member list** — see who's in the party, search by name
-- **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes; all members are notified when info changes (debounced — rapid edits are batched into one message)
+- **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
+- **Notifications** — members are notified when party info changes (debounced — rapid edits batched into one message) and when a party is cancelled
 - **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
 - **Admin roles** — admins can promote/demote other members and kick non-owners
 - **Leave / cancel party** — members can leave, admins can delete the party
+- **Persistent command menu** — `/start` and `/parties` always accessible from the chat
 
 ## Setup
 
@@ -56,7 +59,8 @@ python -m bot.main
 ## Usage
 
 - `/start` — Main menu: create a party or view your parties
-- Share the invite link with friends so they can join your party
+- `/parties` — Jump straight to your parties list
+- Share the invite link with friends or add contacts directly to the party
 - Use inline buttons to manage contributions, members, and party info
 
 ## Dependencies
@@ -77,8 +81,8 @@ maslenitsa-bot/
     keyboards.py     — Inline keyboard builders (menus, calendar, time picker)
     utils.py         — Helpers (HTML escaping, code generation, display names)
     handlers/
-      start.py       — /start, main menu, deep-link join
-      party.py       — Create party, party menu, invite link, leave/cancel
+      start.py       — /start, /parties, main menu, deep-link join
+      party.py       — Create party, party menu, invite (share/add contact), leave/cancel
       fillings.py    — View, add, edit, remove contributions
       members.py     — View, search, kick, promote/demote members
       party_info.py  — View/edit party info (date via calendar, address, map, notes, location pins)

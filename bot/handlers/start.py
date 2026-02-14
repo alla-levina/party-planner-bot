@@ -63,8 +63,27 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
+async def parties_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /parties command — show user's parties."""
+    user = update.effective_user
+    parties = await db.get_parties_for_user(user.id)
+    if not parties:
+        await update.message.reply_text(
+            "You haven't joined any parties yet.\n"
+            "Create one or ask a friend for an invite link!",
+            reply_markup=main_menu_keyboard(),
+        )
+        return
+
+    await update.message.reply_text(
+        "📋 <b>Your parties:</b>",
+        parse_mode="HTML",
+        reply_markup=parties_list_keyboard(parties, user.id),
+    )
+
+
 async def my_parties_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show list of parties the user belongs to."""
+    """Show list of parties the user belongs to (from inline button)."""
     query = update.callback_query
     await query.answer()
     user = update.effective_user
