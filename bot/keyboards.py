@@ -165,7 +165,7 @@ def admin_members_keyboard(members: list[dict], party_id: int, viewer_id: int) -
     """Build keyboard for admin member management.
 
     viewer_id is the telegram_id of the user viewing this list.
-    Only the party owner (creator) can promote/demote. All admins can kick.
+    Admins can promote/demote other members and kick non-owners.
     """
     buttons = []
     for m in members:

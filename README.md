@@ -4,14 +4,15 @@ A Telegram bot for organizing Maslenitsa (pancake celebration) parties. Guests c
 
 ## Features
 
-- **Create parties** with unique invite links
+- **Create parties** with unique invite links (duplicate name prevention per owner)
 - **Join parties** via shareable deep links
 - **View fillings** — see what everyone is bringing
 - **Add fillings** — claim a filling with duplicate prevention
 - **Edit fillings** — rename or remove your own fillings
-- **Member list** — see who's in the party
-- **Party info** — admins can set date/time, address, map link, and notes
-- **Admin roles** — owner can promote/demote admins, admins can kick members
+- **Member list** — see who's in the party, search by name
+- **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
+- **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
+- **Admin roles** — admins can promote/demote other members and kick non-owners
 - **Leave / cancel party** — members can leave, admins can delete the party
 
 ## Setup
@@ -56,22 +57,33 @@ python -m bot.main
 
 - `/start` — Main menu: create a party or view your parties
 - Share the invite link with friends so they can join your party
-- Use inline buttons to manage fillings and members
+- Use inline buttons to manage fillings, members, and party info
+
+## Dependencies
+
+- [python-telegram-bot](https://github.com/python-telegram-bot/python-telegram-bot) — Telegram Bot API wrapper
+- [asyncpg](https://github.com/MagicStack/asyncpg) — PostgreSQL async driver
+- [python-dotenv](https://github.com/theskumar/python-dotenv) — `.env` file loading
+- [python-telegram-bot-calendar](https://github.com/artembakhanov/python-telegram-bot-calendar) — Inline calendar widget for date selection
 
 ## Project Structure
 
 ```
 maslenitsa-bot/
   bot/
-    main.py          — Entry point
-    config.py        — Environment config
+    main.py          — Entry point, handler registration
+    config.py        — Environment config (BOT_TOKEN, DATABASE_URL)
     database.py      — PostgreSQL database layer (asyncpg)
-    keyboards.py     — Inline keyboard builders
-    utils.py         — Helpers (code generation, etc.)
+    keyboards.py     — Inline keyboard builders (menus, calendar, time picker)
+    utils.py         — Helpers (HTML escaping, code generation, display names)
     handlers/
-      start.py       — /start, main menu, deep link join
-      party.py       — Create party, party menu, invite link
+      start.py       — /start, main menu, deep-link join
+      party.py       — Create party, party menu, invite link, leave/cancel
       fillings.py    — View, add, edit, remove fillings
       members.py     — View, search, kick, promote/demote members
-      party_info.py  — View and edit party info (date, address, map, notes)
+      party_info.py  — View/edit party info (date via calendar, address, map, notes, location pins)
+  requirements.txt   — Python dependencies
+  Procfile           — Railway process type
+  runtime.txt        — Python version for Railway
+  railway.toml       — Railway build/deploy config
 ```
