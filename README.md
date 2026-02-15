@@ -25,7 +25,7 @@ A Telegram bot for organizing parties. Guests coordinate who brings what — so 
 2. Clone this repository and install dependencies:
 
 ```bash
-cd maslenitsa-bot
+cd party-planner-bot
 pip install -r requirements.txt
 ```
 
@@ -73,7 +73,7 @@ python -m bot.main
 ## Project Structure
 
 ```
-maslenitsa-bot/
+party-planner-bot/
   bot/
     main.py          — Entry point, handler registration
     config.py        — Environment config (BOT_TOKEN, DATABASE_URL)
