@@ -10,6 +10,7 @@ from bot import database as db
 
 from bot.handlers.start import start_command, parties_command, main_menu_callback, my_parties_callback
 from bot.handlers.party import (
+    broadcast_conversation,
     cancel_party_callback,
     confirm_cancel_party_callback,
     confirm_leave_callback,
@@ -59,6 +60,7 @@ def main() -> None:
     app.add_handler(rename_filling_conversation())
     app.add_handler(search_member_conversation())
     app.add_handler(invite_contact_conversation())
+    app.add_handler(broadcast_conversation())
     app.add_handler(set_info_conversation())
 
     # --- Command handlers ---

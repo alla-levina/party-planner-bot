@@ -497,6 +497,153 @@ def invite_contact_conversation() -> ConversationHandler:
     )
 
 
+# --------------- Broadcast message flow ---------------
+
+TYPING_BROADCAST = 20
+
+
+async def broadcast_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Admin: start the broadcast flow — ask for message text."""
+    query = update.callback_query
+    await query.answer()
+    party_id = int(query.data.split(":")[1])
+
+    user = update.effective_user
+    if not await db.is_user_admin(party_id, user.id):
+        await query.edit_message_text("You don't have permission to do this.")
+        return ConversationHandler.END
+
+    party = await db.get_party_by_id(party_id)
+    if party is None:
+        await query.edit_message_text("Party not found.", reply_markup=main_menu_keyboard())
+        return ConversationHandler.END
+
+    members = await db.get_members(party_id)
+    recipient_count = sum(1 for m in members if m["telegram_id"] != user.id)
+
+    if recipient_count == 0:
+        is_owner = party["creator_id"] == user.id
+        await query.edit_message_text(
+            "There are no other members to send a message to.",
+            reply_markup=party_menu_keyboard(party_id, is_admin=True, is_owner=is_owner),
+        )
+        return ConversationHandler.END
+
+    context.user_data["broadcast_party_id"] = party_id
+
+    await query.edit_message_text(
+        f"📢 <b>Send message to {esc(party['name'])}</b>\n\n"
+        f"Type the message to send to {recipient_count} member(s):",
+        parse_mode="HTML",
+        reply_markup=cancel_keyboard(),
+    )
+    return TYPING_BROADCAST
+
+
+async def receive_broadcast_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Receive the broadcast text, send to all members, report results."""
+    party_id = context.user_data.get("broadcast_party_id")
+    user = update.effective_user
+
+    if not await db.is_user_admin(party_id, user.id):
+        await update.message.reply_text("You don't have permission to do this.")
+        return ConversationHandler.END
+
+    party = await db.get_party_by_id(party_id)
+    if party is None:
+        await update.message.reply_text("Party not found.", reply_markup=main_menu_keyboard())
+        return ConversationHandler.END
+
+    text = update.message.text.strip()
+
+    if not text:
+        await update.message.reply_text(
+            "Message can't be empty. Try again or cancel.",
+            reply_markup=cancel_keyboard(),
+        )
+        return TYPING_BROADCAST
+
+    if len(text) > 1000:
+        await update.message.reply_text(
+            "⚠️ Message is too long (max 1000 characters). Try shorter.",
+            reply_markup=cancel_keyboard(),
+        )
+        return TYPING_BROADCAST
+
+    members = await db.get_members(party_id)
+    sender_name = user_display_name(user)
+
+    broadcast_text = (
+        f"📢 <b>Message from {esc(party['name'])}</b>\n\n"
+        f"{esc(text)}\n\n"
+        f"— {esc(sender_name)}"
+    )
+
+    sent = 0
+    failed = 0
+    for m in members:
+        if m["telegram_id"] == user.id:
+            continue
+        try:
+            await context.bot.send_message(
+                chat_id=m["telegram_id"],
+                text=broadcast_text,
+                parse_mode="HTML",
+            )
+            sent += 1
+        except Exception:
+            failed += 1
+
+    result = f"✅ Message sent to {sent} member(s)!"
+    if failed:
+        result += f"\n⚠️ {failed} member(s) couldn't be reached (they may have blocked the bot)."
+
+    is_owner = party["creator_id"] == user.id
+    await update.message.reply_text(
+        result,
+        reply_markup=party_menu_keyboard(party_id, is_admin=True, is_owner=is_owner),
+    )
+    return ConversationHandler.END
+
+
+async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel the broadcast flow — return to party menu."""
+    query = update.callback_query
+    await query.answer()
+    party_id = context.user_data.get("broadcast_party_id")
+
+    if party_id:
+        party = await db.get_party_by_id(party_id)
+        if party:
+            is_owner = party["creator_id"] == update.effective_user.id
+            await query.edit_message_text(
+                "Cancelled.",
+                reply_markup=party_menu_keyboard(party_id, is_admin=True, is_owner=is_owner),
+            )
+            return ConversationHandler.END
+
+    await query.edit_message_text("Cancelled.", reply_markup=main_menu_keyboard())
+    return ConversationHandler.END
+
+
+def broadcast_conversation() -> ConversationHandler:
+    """Build the ConversationHandler for broadcasting messages to party members."""
+    return ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(broadcast_start, pattern=r"^broadcast:\d+$"),
+        ],
+        states={
+            TYPING_BROADCAST: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_broadcast_text),
+            ],
+        },
+        fallbacks=[
+            CallbackQueryHandler(cancel_broadcast, pattern=r"^cancel$"),
+        ],
+        per_message=False,
+    )
+
+
 # --------------- Conversations ---------------
 
 def create_party_conversation() -> ConversationHandler:

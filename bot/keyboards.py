@@ -28,6 +28,7 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
         [InlineKeyboardButton("🔗 Invite", callback_data=f"invite_link:{party_id}")],
     ]
     if is_admin:
+        buttons.append([InlineKeyboardButton("📢 Send message", callback_data=f"broadcast:{party_id}")])
         buttons.append([InlineKeyboardButton("🚫 Cancel party", callback_data=f"cancel_party:{party_id}")])
     if not is_owner:
         buttons.append([InlineKeyboardButton("🚪 Leave party", callback_data=f"leave_party:{party_id}")])
