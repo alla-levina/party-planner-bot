@@ -494,6 +494,7 @@ def invite_contact_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_invite_contact, pattern=r"^invite_link:\d+$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )
 
 
@@ -641,6 +642,7 @@ def broadcast_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_broadcast, pattern=r"^cancel$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )
 
 
@@ -659,4 +661,5 @@ def create_party_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_conversation, pattern=r"^cancel$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )

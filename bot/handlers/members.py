@@ -290,4 +290,5 @@ def search_member_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_search, pattern=r"^cancel$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )

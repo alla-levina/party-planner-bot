@@ -346,6 +346,7 @@ def add_filling_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_add_filling, pattern=r"^cancel$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )
 
 
@@ -363,4 +364,5 @@ def rename_filling_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_rename, pattern=r"^cancel$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )

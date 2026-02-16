@@ -619,4 +619,5 @@ def set_info_conversation() -> ConversationHandler:
             CallbackQueryHandler(cancel_set_info, pattern=r"^edit_party_info:\d+$"),
         ],
         per_message=False,
+        allow_reentry=True,
     )
