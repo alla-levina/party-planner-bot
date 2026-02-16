@@ -155,6 +155,7 @@ async def dismiss_rating_callback(update: Update, context: ContextTypes.DEFAULT_
             f"Your rating: {_star_display(rating)} ({rating}/5)\n\n"
             "Thanks for rating!",
             parse_mode="HTML",
+            reply_markup=ratings_view_keyboard(party_id),
         )
     else:
         await query.edit_message_text("Thanks for rating!")
