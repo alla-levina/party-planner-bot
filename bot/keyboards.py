@@ -27,7 +27,9 @@ def party_menu_keyboard(party_id: int, is_admin: bool = False, is_owner: bool = 
         [InlineKeyboardButton("👥 Members", callback_data=f"members:{party_id}")],
         [InlineKeyboardButton("🔗 Invite", callback_data=f"invite_link:{party_id}")],
     ]
+    buttons.append([InlineKeyboardButton("📊 Ratings", callback_data=f"view_ratings:{party_id}")])
     if is_admin:
+        buttons.append([InlineKeyboardButton("⭐ Rate the party", callback_data=f"rate_party:{party_id}")])
         buttons.append([InlineKeyboardButton("📢 Send message", callback_data=f"broadcast:{party_id}")])
         buttons.append([InlineKeyboardButton("🚫 Cancel party", callback_data=f"cancel_party:{party_id}")])
     if not is_owner:
@@ -258,6 +260,41 @@ def confirm_cancel_party_keyboard(party_id: int) -> InlineKeyboardMarkup:
             [InlineKeyboardButton("⬅️ No, go back", callback_data=f"open_party:{party_id}")],
         ]
     )
+
+
+# ---- Ratings ----
+
+def confirm_send_ratings_keyboard(party_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Send rating request", callback_data=f"confirm_rate:{party_id}")],
+        [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
+    ])
+
+
+def _star_buttons(party_id: int) -> list[list[InlineKeyboardButton]]:
+    """Two rows of star rating buttons (1–3 and 4–5) for comfortable mobile tapping."""
+    return [
+        [InlineKeyboardButton(f"{i}⭐", callback_data=f"rate:{party_id}:{i}") for i in range(1, 4)],
+        [InlineKeyboardButton(f"{i}⭐", callback_data=f"rate:{party_id}:{i}") for i in range(4, 6)],
+    ]
+
+
+def rating_stars_keyboard(party_id: int) -> InlineKeyboardMarkup:
+    """Star buttons for members to rate a party (1–5)."""
+    return InlineKeyboardMarkup(_star_buttons(party_id))
+
+
+def after_rating_keyboard(party_id: int) -> InlineKeyboardMarkup:
+    """Shown after a member submits a rating — option to change."""
+    rows = _star_buttons(party_id)
+    rows.append([InlineKeyboardButton("⬅️ Done", callback_data=f"dismiss_rating:{party_id}")])
+    return InlineKeyboardMarkup(rows)
+
+
+def ratings_view_keyboard(party_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to party", callback_data=f"open_party:{party_id}")],
+    ])
 
 
 # ---- Cancel (used during text input flows) ----

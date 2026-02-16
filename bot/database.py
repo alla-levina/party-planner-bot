@@ -50,6 +50,19 @@ async def init_db(database_url: str) -> None:
             """
         )
 
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS party_ratings (
+                id          SERIAL  PRIMARY KEY,
+                party_id    INTEGER NOT NULL REFERENCES parties(id),
+                telegram_id BIGINT  NOT NULL,
+                rating      INTEGER NOT NULL,
+                created_at  TEXT    NOT NULL,
+                UNIQUE(party_id, telegram_id)
+            )
+            """
+        )
+
         # Migration: add party info columns if missing
         for col in ("info_datetime", "info_address", "info_map_link", "info_description"):
             await conn.execute(f"""
@@ -204,9 +217,13 @@ async def get_member(party_id: int, telegram_id: int) -> dict | None:
 
 
 async def remove_member(party_id: int, telegram_id: int) -> None:
-    """Remove a member and all their fillings from a party."""
+    """Remove a member and all their fillings and ratings from a party."""
     async with _pool.acquire() as conn:
         async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM party_ratings WHERE party_id = $1 AND telegram_id = $2",
+                party_id, telegram_id,
+            )
             await conn.execute(
                 "DELETE FROM fillings WHERE party_id = $1 AND added_by_id = $2",
                 party_id, telegram_id,
@@ -246,9 +263,10 @@ async def demote_admin(party_id: int, telegram_id: int) -> None:
 
 
 async def delete_party(party_id: int) -> None:
-    """Delete a party and all its members and fillings."""
+    """Delete a party and all its members, fillings, and ratings."""
     async with _pool.acquire() as conn:
         async with conn.transaction():
+            await conn.execute("DELETE FROM party_ratings WHERE party_id = $1", party_id)
             await conn.execute("DELETE FROM fillings WHERE party_id = $1", party_id)
             await conn.execute("DELETE FROM party_members WHERE party_id = $1", party_id)
             await conn.execute("DELETE FROM parties WHERE id = $1", party_id)
@@ -320,3 +338,41 @@ async def rename_filling(filling_id: int, new_name: str) -> None:
 async def delete_filling(filling_id: int) -> None:
     async with _pool.acquire() as conn:
         await conn.execute("DELETE FROM fillings WHERE id = $1", filling_id)
+
+
+# --------------- Ratings CRUD ---------------
+
+async def save_rating(party_id: int, telegram_id: int, rating: int) -> None:
+    """Save or update a party rating (upsert)."""
+    async with _pool.acquire() as conn:
+        await conn.execute(
+            """INSERT INTO party_ratings (party_id, telegram_id, rating, created_at)
+               VALUES ($1, $2, $3, $4)
+               ON CONFLICT (party_id, telegram_id)
+               DO UPDATE SET rating = EXCLUDED.rating, created_at = EXCLUDED.created_at""",
+            party_id, telegram_id, rating, datetime.now(timezone.utc).isoformat(),
+        )
+
+
+async def get_ratings(party_id: int) -> list[dict]:
+    """Get all ratings for a party, joined with member names."""
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT pr.*, pm.telegram_name
+               FROM party_ratings pr
+               JOIN party_members pm ON pr.party_id = pm.party_id AND pr.telegram_id = pm.telegram_id
+               WHERE pr.party_id = $1
+               ORDER BY pr.rating DESC""",
+            party_id,
+        )
+        return [dict(r) for r in rows]
+
+
+async def get_user_rating(party_id: int, telegram_id: int) -> dict | None:
+    """Get a single user's rating for a party."""
+    async with _pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT * FROM party_ratings WHERE party_id = $1 AND telegram_id = $2",
+            party_id, telegram_id,
+        )
+        return _record_to_dict(row)

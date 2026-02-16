@@ -42,6 +42,13 @@ from bot.handlers.party_info import (
     party_info_callback,
     set_info_conversation,
 )
+from bot.handlers.ratings import (
+    confirm_send_ratings_callback,
+    dismiss_rating_callback,
+    handle_rating_callback,
+    rate_party_callback,
+    view_ratings_callback,
+)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -88,6 +95,11 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(party_info_callback, pattern=r"^party_info:\d+$"))
     app.add_handler(CallbackQueryHandler(edit_party_info_callback, pattern=r"^edit_party_info:\d+$"))
     app.add_handler(CallbackQueryHandler(clear_info_callback, pattern=r"^clear_info:\d+:info_\w+$"))
+    app.add_handler(CallbackQueryHandler(rate_party_callback, pattern=r"^rate_party:\d+$"))
+    app.add_handler(CallbackQueryHandler(confirm_send_ratings_callback, pattern=r"^confirm_rate:\d+$"))
+    app.add_handler(CallbackQueryHandler(handle_rating_callback, pattern=r"^rate:\d+:\d+$"))
+    app.add_handler(CallbackQueryHandler(view_ratings_callback, pattern=r"^view_ratings:\d+$"))
+    app.add_handler(CallbackQueryHandler(dismiss_rating_callback, pattern=r"^dismiss_rating:\d+$"))
 
     # --- Init DB on startup, close on shutdown ---
     async def post_init(application) -> None:

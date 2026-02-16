@@ -12,6 +12,7 @@ A Telegram bot for organizing parties. Guests coordinate who brings what — so 
 - **Edit contributions** — rename or remove your own contributions
 - **Member list** — see who's in the party, search by name
 - **Party info** — admins can set date/time (inline calendar + time picker), address, map link, and notes
+- **Rate the party** — admins can send a rating request; members rate from 1–5 stars; everyone can view results
 - **Broadcast messages** — admins can send a message to all party members at once
 - **Notifications** — members are notified when party info changes (debounced — rapid edits batched into one message) and when a party is cancelled
 - **Location sharing** — share a Telegram location pin to auto-generate a Google Maps link
@@ -84,6 +85,7 @@ party-planner-bot/
     handlers/
       start.py       — /start, /parties, main menu, deep-link join
       party.py       — Create party, party menu, invite (share/add contact), broadcast, leave/cancel
+      ratings.py     — Rate the party (send requests, submit stars, view results)
       fillings.py    — View, add, edit, remove contributions
       members.py     — View, search, kick, promote/demote members
       party_info.py  — View/edit party info (date via calendar, address, map, notes, location pins)
